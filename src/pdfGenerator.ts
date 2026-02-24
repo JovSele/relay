@@ -240,7 +240,7 @@ function renderPage1_ExecutiveSummary(
   pdf.setTextColor(COLORS.TEXT_PRIMARY.r, COLORS.TEXT_PRIMARY.g, COLORS.TEXT_PRIMARY.b);
   pdf.setFontSize(16);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('EXECUTIVE AUTOMATION AUDIT', PAGE_MARGIN, yPos);
+  pdf.text('Lighthouse Audit Report', PAGE_MARGIN, yPos);
   
   yPos += 8;
 
@@ -614,20 +614,21 @@ function renderPage2_PriorityActions(
         
         // Calculate heights (in mm)
         const rootCauseHeight = 5;           // Root Cause label line
-        const descriptionHeight = descriptionLineCount * 5;  // 5mm per line
+        const descriptionHeight = descriptionLineCount * 5 + 2;  // 5mm per line
         const impactHeight = 8;              // Impact + Effort + exit margin
-        const boxPaddingVertical = 4;        // top + bottom internal padding
+        const boxPaddingVertical = 4        // top + bottom internal padding
         
         const findingBoxHeight = boxPaddingVertical + rootCauseHeight + descriptionHeight + impactHeight;
-        const findingBoxY = yPos - 5;
+        const findingBoxY = yPos - 3;    //box od nazvu 
         
         // Draw box with dynamic height
         pdf.setFillColor(COLORS.BOX_BACKGROUND.r, COLORS.BOX_BACKGROUND.g, COLORS.BOX_BACKGROUND.b);
         pdf.setDrawColor(COLORS.BOX_BORDER_LIGHT.r, COLORS.BOX_BORDER_LIGHT.g, COLORS.BOX_BORDER_LIGHT.b);
         pdf.setLineWidth(0.3);
         pdf.roundedRect(findingBoxX - 2, findingBoxY, findingBoxWidth, findingBoxHeight, 2, 2, 'FD');
-        
         pdf.setDrawColor(COLORS.BLACK.r, COLORS.BLACK.g, COLORS.BLACK.b);
+
+        yPos += 3;
         
         // Root Cause (red, bold) — now rendered inside box
         if (safeRender(yPos, pageHeight, 15)) {
@@ -644,7 +645,7 @@ function renderPage2_PriorityActions(
           pdf.setFont('helvetica', 'normal');
           pdf.setTextColor(COLORS.TEXT_SECONDARY.r, COLORS.TEXT_SECONDARY.g, COLORS.TEXT_SECONDARY.b);
           pdf.text(descriptionLines, PAGE_MARGIN + 10, yPos);
-          yPos += 6;
+          yPos += descriptionLineCount * 5 + 2;
         }
         
         // Impact + Effort (split: gray labels, dark values)

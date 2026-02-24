@@ -1,3 +1,5 @@
+//src/handoffGenerator.ts
+
 import jsPDF from 'jspdf';
 
 // ========================================
@@ -160,7 +162,7 @@ function generateExecutiveSummary(pdf: jsPDF, vm: HandoffViewModel, config: Hand
   pdf.setTextColor(COLORS.TEXT_PRIMARY.r, COLORS.TEXT_PRIMARY.g, COLORS.TEXT_PRIMARY.b);
   pdf.setFontSize(16);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Infrastructure Deployment & Handoff Kit', PAGE_MARGIN, yPos);
+  pdf.text('Lighthouse Handoff Report', PAGE_MARGIN, yPos);
 
   yPos += 8;
 
@@ -208,10 +210,15 @@ function generateExecutiveSummary(pdf: jsPDF, vm: HandoffViewModel, config: Hand
     COLORS.TEXT_SECONDARY.b
   );
 
+  const appsText = vm.summary.connectedApps.length >= 2
+    ? `${vm.summary.connectedApps[0]} and ${vm.summary.connectedApps[1]}`
+    : vm.summary.connectedApps[0] || 'connected systems';
+
   const primaryFunctionLines = pdf.splitTextToSize(
-    `Failure Impact: Disruption would affect data flow across connected systems.`,
+    `Failure Impact: Disruption would interrupt automated workflows and require manual intervention across ${appsText}.`,
     CONTENT_WIDTH
   );
+
   pdf.text(primaryFunctionLines, PAGE_MARGIN, yPos);
   yPos += primaryFunctionLines.length * 5 + 12;
 
@@ -238,6 +245,16 @@ function generateExecutiveSummary(pdf: jsPDF, vm: HandoffViewModel, config: Hand
 
     yPos += 7;
   });
+
+  // Poznámka ak niektoré Zapy nemajú metadata
+  const hasLimitedMetadata = vm.zaps.some(z => z.connectedApps.length === 0);
+  if (hasLimitedMetadata) {
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'italic');
+    pdf.setTextColor(COLORS.SLATE_400.r, COLORS.SLATE_400.g, COLORS.SLATE_400.b);
+    pdf.text('Some workflows have limited metadata due to export constraints.', PAGE_MARGIN, yPos);
+    yPos += 6;
+  }
 
   yPos += 8;
 
@@ -392,10 +409,15 @@ function generatePerZapBreakdown(pdf: jsPDF, vm: HandoffViewModel, _config: Hand
     pdf.roundedRect(PAGE_MARGIN, yPos - 7, CONTENT_WIDTH, estimatedHeight + 2, 2, 2, 'FD');
     pdf.setDrawColor(COLORS.BLACK.r, COLORS.BLACK.g, COLORS.BLACK.b);
 
-    // Zap name
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(COLORS.PRIMARY_BLUE.r, COLORS.PRIMARY_BLUE.g, COLORS.PRIMARY_BLUE.b);
+    // Zap name — Workflow ID in gray, named zaps in blue
+    const isUnnamed = zap.zapName.startsWith('Workflow ID:');
+    pdf.setFontSize(isUnnamed ? 10 : 12);
+    pdf.setFont('helvetica', isUnnamed ? 'normal' : 'bold');
+    pdf.setTextColor(
+      isUnnamed ? COLORS.TEXT_SECONDARY.r : COLORS.PRIMARY_BLUE.r,
+      isUnnamed ? COLORS.TEXT_SECONDARY.g : COLORS.PRIMARY_BLUE.g,
+      isUnnamed ? COLORS.TEXT_SECONDARY.b : COLORS.PRIMARY_BLUE.b
+    );
     pdf.text(zap.zapName, PAGE_MARGIN + 4, yPos);
     yPos += 7;
 
@@ -442,7 +464,7 @@ function generatePerZapBreakdown(pdf: jsPDF, vm: HandoffViewModel, _config: Hand
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(COLORS.TEXT_PRIMARY.r, COLORS.TEXT_PRIMARY.g, COLORS.TEXT_PRIMARY.b);
     const appsText = zap.connectedApps && zap.connectedApps.length > 0
-      ? zap.connectedApps.join(' -> ')
+      ? zap.connectedApps.join(' to ')
       : 'Not identified in export metadata';
     pdf.text(appsText, PAGE_MARGIN + 4 + appsLabelW, yPos);
     yPos += 6;
@@ -582,20 +604,22 @@ vm.dependencies.forEach((dep, index) => {
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(6);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(`+${logicSteps}`, logic2X + boxWidth / 2, yPos + 6, { align: 'center' });
+  const logicLabel = logicSteps === 0 ? 'Direct' : `+${logicSteps}`;
+  pdf.text(logicLabel, logic2X + boxWidth / 2, yPos + 6, { align: 'center' });
   pdf.setTextColor(COLORS.SLATE_900.r, COLORS.SLATE_900.g, COLORS.SLATE_900.b);
   pdf.setFontSize(6);
   pdf.text('LOGIC LAYER', logic2X + boxWidth / 2, yPos + 13, { align: 'center' });
   pdf.setTextColor(COLORS.SLATE_400.r, COLORS.SLATE_400.g, COLORS.SLATE_400.b);
   pdf.setFontSize(5);
-  pdf.text('FILTERS & FORMATTING', logic2X + boxWidth / 2, yPos + 17, { align: 'center' });
+  const logicSubLabel = logicSteps === 0 ? 'NO INTERMEDIATE STEPS' : 'FILTERS & FORMATTING';
+  pdf.text(logicSubLabel, logic2X + boxWidth / 2, yPos + 17, { align: 'center' });
 
   // Arrow 2
   const arrow2X = logic2X + boxWidth + 2;
   pdf.setDrawColor(COLORS.SLATE_400.r, COLORS.SLATE_400.g, COLORS.SLATE_400.b);
   pdf.line(arrow2X, arrowY, arrow2X + boxGap - 4, arrowY);
   pdf.setFillColor(COLORS.SLATE_400.r, COLORS.SLATE_400.g, COLORS.SLATE_400.b);
-  pdf.triangle(arrow2X + boxGap - 4, arrowY - 1, arrow2X + boxGap - 2, arrowY, arrow2X + boxGap - 4, arrowY + 1, 'F');
+  pdf.triangle(arrow2X + boxGap - 6, arrowY - 1, arrow2X + boxGap - 4, arrowY, arrow2X + boxGap - 6, arrowY + 1, 'F');
 
   // ACTION box
   const action3X = logic2X + boxWidth + boxGap;
@@ -807,6 +831,18 @@ function generateHandoffChecklist(
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(COLORS.TEXT_PRIMARY.r, COLORS.TEXT_PRIMARY.g, COLORS.TEXT_PRIMARY.b);
     pdf.text(`${categoryNumber}. ${categoryLabel}`, PAGE_MARGIN, yPos);
+
+    // Badge
+    const badgeText = cat;
+    const badgeW = pdf.getTextWidth(badgeText) + 6;
+    const badgeX = PAGE_MARGIN + CONTENT_WIDTH - badgeW;
+    pdf.setFillColor(COLORS.SLATE_200.r, COLORS.SLATE_200.g, COLORS.SLATE_200.b);
+    pdf.roundedRect(badgeX, yPos - 5, badgeW, 6, 1, 1, 'F');
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(COLORS.SLATE_700.r, COLORS.SLATE_700.g, COLORS.SLATE_700.b);
+    pdf.text(badgeText, badgeX + 3, yPos - 1);
+
     yPos += 8;
 
     // ===== ITEMS =====
@@ -814,7 +850,7 @@ function generateHandoffChecklist(
       const item = items[i];
       const itemLines = pdf.splitTextToSize(item.step, CONTENT_WIDTH - 12);
 
-      const itemHeight = itemLines.length * 5 + 6;
+      const itemHeight = itemLines.length * 5 + 4;
 
       // 🔐 PAGE BREAK INSIDE CATEGORY
       if (!safeRender(yPos, pageHeight, itemHeight)) {
@@ -825,7 +861,7 @@ function generateHandoffChecklist(
       // Checkbox
       pdf.setDrawColor(COLORS.TEXT_SECONDARY.r, COLORS.TEXT_SECONDARY.g, COLORS.TEXT_SECONDARY.b);
       pdf.setLineWidth(0.3);
-      pdf.rect(PAGE_MARGIN + 2, yPos - 3.5, 4, 4);
+      pdf.rect(PAGE_MARGIN + 2, yPos - 3.5, 4, 4, 'S');
 
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
@@ -835,7 +871,7 @@ function generateHandoffChecklist(
       yPos += itemHeight;
     }
 
-    yPos += 8;
+    yPos += 5;
   }
 
   // ===== FINAL DIVIDER =====

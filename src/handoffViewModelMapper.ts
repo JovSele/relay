@@ -1,3 +1,5 @@
+//src/handoffViewModelMapper.ts
+
 import type { AuditResult, PerZapFinding, FlagCode } from './types/audit-schema';
 import type { HandoffViewModel, ZapDescription, DependencyEntry, TroubleshootingEntry } from './handoffGenerator';
 
@@ -113,7 +115,13 @@ function deriveActionDescription(zapName: string): string {
   const arrowMatch = zapName.match(/→\s*(.+)$/);
   const toMatch = zapName.match(/\bto\s+([A-Z][a-zA-Z\s]+)$/);
 
-  const destination = arrowMatch?.[1]?.trim() || toMatch?.[1]?.trim();
+  const rawDestination = arrowMatch?.[1]?.trim() || toMatch?.[1]?.trim();
+  const destinationWords = rawDestination?.split(' ') ?? [];
+  const stopWords = ['for', 'and', 'or', 'of', 'to', 'with', 'via'];
+  const cutIndex = destinationWords.findIndex((w, i) => i > 0 && stopWords.includes(w.toLowerCase()));
+  const destination = cutIndex > 0 
+    ? destinationWords.slice(0, cutIndex).join(' ') 
+    : rawDestination;
 
   if (destination) {
     const dest = destination.toLowerCase();
@@ -135,6 +143,7 @@ function deriveActionDescription(zapName: string): string {
     if (dest.includes('twitter') || dest.includes('x.com')) return 'Post a tweet or update on Twitter/X'
     if (dest.includes('linkedin')) return 'Publish a post on LinkedIn'
     if (dest.includes('discord')) return 'Send a message to a Discord channel'
+    if (dest.includes('buffer')) return 'Schedule and publish the post via Buffer'; 
 
     return `Perform an action in ${destination}`;
   }
@@ -174,9 +183,10 @@ function extractConnectedApps(zapName: string): string[] {
     'Typeform', 'JotForm', 'Stripe', 'Shopify', 'Trello', 'Asana',
     'Monday', 'ClickUp', 'Jira', 'Google Sheets', 'Google Drive',
     'Google Calendar', 'Mailchimp', 'Klaviyo', 'Twilio', 'Calendly',
-    'Pipedrive', 'Webflow', 'WordPress', 'Zapier', 'Webhook', 'RSS',
+    'Pipedrive', 'Webflow', 'WordPress', 'Zapier', 'Webhook',
     'Reddit', 'Twitter', 'LinkedIn', 'Facebook', 'Instagram',  
     'Dropbox', 'OneDrive', 'Zoom', 'Teams', 'Discord', 'Telegram', 
+    'Buffer',
   ];
 
   const found = knownApps.filter(app =>
@@ -318,7 +328,7 @@ function generateTroubleshootingEntry(zap: PerZapFinding): TroubleshootingEntry 
   if (zap.flags.length > 0) {
     return {
       zapName: zap.zap_name,
-      commonIssue: 'Automation structure may require review if unexpected interruptions occur',
+      commonIssue: 'Unexpected interruption due to misconfigured steps or expired connections',
       resolution: 'Review the Zap steps in Zapier and check the task history for recent errors.',
     };
   }
@@ -346,10 +356,23 @@ function buildDependencyEntries(zaps: PerZapFinding[]): DependencyEntry[] {
     .filter(zap => !zap.is_zombie) // skip zombies from dependency map
     .map(zap => {
       const connectedApps = extractConnectedApps(zap.zap_name);
+      const lower = zap.zap_name.toLowerCase();
+      
+      // RSS je trigger ale nie je v knownApps — detekuj zvlášť
+      const hasRssTrigger = lower.includes('rss') || lower.includes('feed');
+      
+      const triggerApps = hasRssTrigger 
+        ? ['RSS Feed'] 
+        : connectedApps.slice(0, 1);
+        
+      const actionApps = hasRssTrigger
+        ? connectedApps.slice(0, 1)  // Buffer
+        : connectedApps.slice(1);
+        
       return {
         zapName: getDisplayName(zap),
-        dependsOn: connectedApps.length > 0 ? connectedApps.slice(0, 1) : [], // trigger app
-        feedsInto: connectedApps.length > 1 ? connectedApps.slice(1) : [],    // action apps
+        dependsOn: triggerApps,
+        feedsInto: actionApps,
       };
     })
     .filter(dep => dep.dependsOn.length > 0 || dep.feedsInto.length > 0);
@@ -401,7 +424,32 @@ function generateStackPurpose(zaps: PerZapFinding[]): string {
     ? `Primary Function: ${purposes[0].charAt(0).toUpperCase() + purposes[0].slice(1)}.`
     : '';
 
-  return `${primaryFunction ? primaryFunction + ' ' : ''}This automation environment contains ${total} configured workflow${total !== 1 ? 's' : ''}.${statusNote}`;
+  if (purposes.length > 0) {
+    const mainPurpose = purposes[0];
+    // Extract key apps from zap names for concise summary
+    const appMatches = allNames.match(/wordpress|reddit|slack|gmail|notion|airtable|stripe|shopify|hubspot/g);
+    const APP_DISPLAY_NAMES: Record<string, string> = {
+      wordpress: 'WordPress',
+      reddit: 'Reddit',
+      slack: 'Slack',
+      gmail: 'Gmail',
+      notion: 'Notion',
+      airtable: 'Airtable',
+      stripe: 'Stripe',
+      shopify: 'Shopify',
+      hubspot: 'HubSpot',
+    };
+    const uniqueApps = appMatches 
+      ? [...new Set(appMatches)].map(a => APP_DISPLAY_NAMES[a] || a.charAt(0).toUpperCase() + a.slice(1)) 
+      : [];
+    
+    if (uniqueApps.length >= 2) {
+      return `Automates ${mainPurpose} from ${uniqueApps[0]} to ${uniqueApps.slice(1).join(', ')}.`;
+    }
+    return `Automates ${mainPurpose}.`;
+  }
+
+  return `Automation stack with ${total} configured workflow${total !== 1 ? 's' : ''}.`;
 }
 
 // ========================================
@@ -506,7 +554,7 @@ function getAllConnectedApps(zaps: PerZapFinding[]): string[] {
   });
    // Filtrovať Zapier — je platforma, nie dependency
   apps.delete('Zapier');
-  return Array.from(apps).sort();
+  return Array.from(apps);
 }
 
 // ========================================
@@ -515,8 +563,7 @@ function getAllConnectedApps(zaps: PerZapFinding[]): string[] {
 
 function getDisplayName(zap: PerZapFinding): string {
   if (zap.zap_name === 'Untitled Zap') {
-    const shortId = zap.zap_id.slice(-4);
-    return `Zap #${shortId} - Unnamed`;
+    return `Workflow ID: ${zap.zap_id} - Name not defined in Zapier`;
   }
   return zap.zap_name;
 }
@@ -560,11 +607,14 @@ export function mapAuditToHandoffViewModel(
   const troubleshooting: TroubleshootingEntry[] = zaps
   .map(generateTroubleshootingEntry)
   .filter((entry): entry is TroubleshootingEntry => entry !== null)
-  .map(entry => ({           
-    ...entry,
-    zapName: getDisplayName(zaps.find(z => z.zap_name === entry.zapName || 
-      getDisplayName(z) === entry.zapName)!),
-  }))
+  .map(entry => {
+    const matchedZap = zaps.find(z => z.zap_name === entry.zapName || 
+      getDisplayName(z) === entry.zapName);
+    return {
+      ...entry,
+      zapName: matchedZap ? getDisplayName(matchedZap) : entry.zapName,
+    };
+  })
   .filter((entry, idx, arr) => arr.findIndex(e => e.zapName === entry.zapName) === idx);
 
   // ── CHECKLIST ────────────────────────────

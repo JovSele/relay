@@ -77,10 +77,8 @@ export function mapAuditToPdfViewModel(
   const zapNameMap = new Map<string, string>();
 
   auditResult.per_zap_findings.forEach(zap => {
-    if (zap.zap_name === 'Untitled Zap') {
-      // Extract last 4 characters from zap_id
-      const shortId = zap.zap_id.slice(-4);
-      zapNameMap.set(zap.zap_id, `Zap #${shortId} (Unnamed)`);
+  if (zap.zap_name === 'Untitled Zap') {
+        zapNameMap.set(zap.zap_id, `Workflow ID: ${zap.zap_id} — Name not defined in Zapier`);
     } else {
       zapNameMap.set(zap.zap_id, zap.zap_name);
     }
