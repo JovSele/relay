@@ -516,7 +516,7 @@ function getAllConnectedApps(zaps: PerZapFinding[]): string[] {
 function getDisplayName(zap: PerZapFinding): string {
   if (zap.zap_name === 'Untitled Zap') {
     const shortId = zap.zap_id.slice(-4);
-    return `Zap #${shortId} (Unnamed)`;
+    return `Zap #${shortId} - Unnamed`;
   }
   return zap.zap_name;
 }

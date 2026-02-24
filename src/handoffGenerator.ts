@@ -142,37 +142,7 @@ function drawPageFooter(pdf: jsPDF, clientName: string, preparedBy: string): voi
 }
 
 // --- Main PDF generation ---
-function generateHandoffPDF(viewModel: ViewModel, config: Config, clientName: string, preparedBy: string) {
-  const pdf = new jsPDF();
 
-  // Page 1: Executive Summary
-  generateExecutiveSummary(pdf, viewModel, config);
-  drawPageFooter(pdf, clientName, preparedBy);
-
-  // Page 2: Per-Zap Breakdown (core value)
-  pdf.addPage();
-  generatePerZapBreakdown(pdf, viewModel, config);
-  drawPageFooter(pdf, clientName, preparedBy);
-
-  // Page 3: Dependency Map
-  pdf.addPage();
-  generateDependencyMap(pdf, viewModel, config);
-  drawPageFooter(pdf, clientName, preparedBy);
-
-  // Page 4: Troubleshooting Guide
-  pdf.addPage();
-  generateTroubleshootingSection(pdf, viewModel, config);
-  drawPageFooter(pdf, clientName, preparedBy);
-
-  // Page 5: Handoff Checklist
-  pdf.addPage();
-  generateHandoffChecklist(pdf, viewModel, config);
-  drawPageFooter(pdf, clientName, preparedBy);
-
-  // Save
-  const timestamp = new Date().toISOString().split('T')[0];
-  pdf.save(`Handoff_Report_${config.reportCode}_${timestamp}.pdf`);
-}
 
 // ========================================
 // PAGE RENDERING FUNCTIONS
@@ -257,14 +227,13 @@ function generateExecutiveSummary(pdf: jsPDF, vm: HandoffViewModel, config: Hand
   ];
 
   stats.forEach(stat => {
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(COLORS.TEXT_SECONDARY.r, COLORS.TEXT_SECONDARY.g, COLORS.TEXT_SECONDARY.b);
-    pdf.text(stat.label, PAGE_MARGIN, yPos);
-
-    const labelWidth = pdf.getTextWidth(stat.label + ' ');
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(COLORS.TEXT_PRIMARY.r, COLORS.TEXT_PRIMARY.g, COLORS.TEXT_PRIMARY.b);
     pdf.text(stat.label + ' ', PAGE_MARGIN, yPos);
+
+    const labelWidth = pdf.getTextWidth(stat.label + ' ');
+
+    pdf.setFont('helvetica', 'normal');
     pdf.text(stat.value, PAGE_MARGIN + labelWidth, yPos);
 
     yPos += 7;
@@ -299,7 +268,7 @@ function generateExecutiveSummary(pdf: jsPDF, vm: HandoffViewModel, config: Hand
   // Box
   pdf.setFillColor(COLORS.BOX_BACKGROUND.r, COLORS.BOX_BACKGROUND.g, COLORS.BOX_BACKGROUND.b);
   pdf.setDrawColor(COLORS.BOX_BORDER_STRONG.r, COLORS.BOX_BORDER_STRONG.g, COLORS.BOX_BORDER_STRONG.b);
-  pdf.setLineWidth(0.3);
+  pdf.setLineWidth(0.1);
   pdf.roundedRect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 38, 2, 2, 'FD');
 
   // Box header
@@ -348,7 +317,7 @@ function generateExecutiveSummary(pdf: jsPDF, vm: HandoffViewModel, config: Hand
   pdf.setTextColor(COLORS.TEXT_SECONDARY.r, COLORS.TEXT_SECONDARY.g, COLORS.TEXT_SECONDARY.b);
   pdf.text(`Recommended First Action: ${firstAction}`, PAGE_MARGIN + 4, yPos);
 
-  yPos += 10;
+  yPos += 13;
 
   // ===== FINAL DIVIDER =====
   pdf.setDrawColor(COLORS.DIVIDER.r, COLORS.DIVIDER.g, COLORS.DIVIDER.b);
@@ -381,7 +350,7 @@ function generatePerZapBreakdown(pdf: jsPDF, vm: HandoffViewModel, _config: Hand
   yPos += 12;
 
   pdf.setDrawColor(COLORS.DIVIDER.r, COLORS.DIVIDER.g, COLORS.DIVIDER.b);
-  pdf.setLineWidth(0.3);
+  pdf.setLineWidth(0.1);
   pdf.line(PAGE_MARGIN, yPos, PAGE_MARGIN + CONTENT_WIDTH, yPos);
 
   yPos += 15;
@@ -402,12 +371,12 @@ function generatePerZapBreakdown(pdf: jsPDF, vm: HandoffViewModel, _config: Hand
     const notesLines = zap.notes ? pdf.splitTextToSize(zap.notes, CONTENT_WIDTH - 20) : [];
 
     const estimatedHeight =
-      8 +                                          // zap name
-      triggerLines.length * 5 + 6 +               // trigger
-      actionLines.length * 5 + 6 +                // action
+      7 +                                          // zap name
+      (triggerLines.length - 1) * 5 + 6 +         // trigger (wrap +5, final +6)
+      (actionLines.length - 1) * 5 + 6 +          // action (wrap +5, final +6)
       6 +                                          // frequency
       6 +                                          // apps
-      (notesLines.length > 0 ? notesLines.length * 5 + 5 : 0) + // notes
+      (notesLines.length > 0 ? (notesLines.length - 1) * 5 + 5 : 0) +
       4;                                           // bottom padding
 
     // New page if needed
@@ -419,8 +388,8 @@ function generatePerZapBreakdown(pdf: jsPDF, vm: HandoffViewModel, _config: Hand
     // Card background
     pdf.setFillColor(COLORS.BOX_BACKGROUND.r, COLORS.BOX_BACKGROUND.g, COLORS.BOX_BACKGROUND.b);
     pdf.setDrawColor(COLORS.BOX_BORDER_LIGHT.r, COLORS.BOX_BORDER_LIGHT.g, COLORS.BOX_BORDER_LIGHT.b);
-    pdf.setLineWidth(0.3);
-    pdf.roundedRect(PAGE_MARGIN, yPos - 5, CONTENT_WIDTH, estimatedHeight + 8, 2, 2, 'FD');
+    pdf.setLineWidth(0.1);
+    pdf.roundedRect(PAGE_MARGIN, yPos - 7, CONTENT_WIDTH, estimatedHeight + 2, 2, 2, 'FD');
     pdf.setDrawColor(COLORS.BLACK.r, COLORS.BLACK.g, COLORS.BLACK.b);
 
     // Zap name
@@ -434,10 +403,10 @@ function generatePerZapBreakdown(pdf: jsPDF, vm: HandoffViewModel, _config: Hand
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(COLORS.TEXT_SECONDARY.r, COLORS.TEXT_SECONDARY.g, COLORS.TEXT_SECONDARY.b);
-    pdf.text('Trigger:', PAGE_MARGIN + 4, yPos);
+    const triggerLabelW = pdf.getTextWidth('Trigger: ');
+    pdf.text('Trigger: ', PAGE_MARGIN + 4, yPos);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(COLORS.TEXT_PRIMARY.r, COLORS.TEXT_PRIMARY.g, COLORS.TEXT_PRIMARY.b);
-    const triggerLabelW = pdf.getTextWidth('Trigger: ');
     pdf.text(triggerLines[0], PAGE_MARGIN + 4 + triggerLabelW, yPos);
     for (let i = 1; i < triggerLines.length; i++) { yPos += 5; pdf.text(triggerLines[i], PAGE_MARGIN + 4 + triggerLabelW, yPos); }
     yPos += 6;
@@ -445,34 +414,37 @@ function generatePerZapBreakdown(pdf: jsPDF, vm: HandoffViewModel, _config: Hand
     // ACTION
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(COLORS.TEXT_SECONDARY.r, COLORS.TEXT_SECONDARY.g, COLORS.TEXT_SECONDARY.b);
-    pdf.text('Action:', PAGE_MARGIN + 4, yPos);
+    const actionLabelW = pdf.getTextWidth('Action: ');
+    pdf.text('Action: ', PAGE_MARGIN + 4, yPos);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(COLORS.TEXT_PRIMARY.r, COLORS.TEXT_PRIMARY.g, COLORS.TEXT_PRIMARY.b);
-    const actionLabelW = pdf.getTextWidth('Action: ');
     pdf.text(actionLines[0], PAGE_MARGIN + 4 + actionLabelW, yPos);
     for (let i = 1; i < actionLines.length; i++) { yPos += 5; pdf.text(actionLines[i], PAGE_MARGIN + 4 + actionLabelW, yPos); }
     yPos += 6;
 
     // FREQUENCY
+    pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(COLORS.TEXT_SECONDARY.r, COLORS.TEXT_SECONDARY.g, COLORS.TEXT_SECONDARY.b);
-    pdf.text('Frequency:', PAGE_MARGIN + 4, yPos);
+    const frequencyLabelW = pdf.getTextWidth('Frequency: ');
+    pdf.text('Frequency: ', PAGE_MARGIN + 4, yPos);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(COLORS.TEXT_PRIMARY.r, COLORS.TEXT_PRIMARY.g, COLORS.TEXT_PRIMARY.b);
-    pdf.text(zap.frequency, PAGE_MARGIN + 4 + pdf.getTextWidth('Frequency: '), yPos);
+    pdf.text(zap.frequency, PAGE_MARGIN + 4 + frequencyLabelW, yPos);
     yPos += 6;
 
-    // CONNECTED APPS (flow style)
+    // CONNECTED APPS
+    pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(COLORS.TEXT_SECONDARY.r, COLORS.TEXT_SECONDARY.g, COLORS.TEXT_SECONDARY.b);
-    pdf.text('Apps:', PAGE_MARGIN + 4, yPos);
+    const appsLabelW = pdf.getTextWidth('Apps: ');
+    pdf.text('Apps: ', PAGE_MARGIN + 4, yPos);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(COLORS.TEXT_PRIMARY.r, COLORS.TEXT_PRIMARY.g, COLORS.TEXT_PRIMARY.b);
-    const appsText =
-      zap.connectedApps && zap.connectedApps.length > 0
-        ? zap.connectedApps.join(' → ')
-        : 'Not identified in export metadata';
-    pdf.text(appsText, PAGE_MARGIN + 4 + pdf.getTextWidth('Apps: '), yPos);
+    const appsText = zap.connectedApps && zap.connectedApps.length > 0
+      ? zap.connectedApps.join(' -> ')
+      : 'Not identified in export metadata';
+    pdf.text(appsText, PAGE_MARGIN + 4 + appsLabelW, yPos);
     yPos += 6;
 
     // NOTES (optional, gray italic)
@@ -486,7 +458,7 @@ function generatePerZapBreakdown(pdf: jsPDF, vm: HandoffViewModel, _config: Hand
     }
 
     // Gap between cards
-    yPos += 12;
+    yPos += 10;
   });
 }
 
@@ -648,7 +620,8 @@ vm.dependencies.forEach((dep, index) => {
 
   yPos += boxHeight + 14;
 });
-
+  
+  yPos += 10;
   pdf.setDrawColor(COLORS.DIVIDER.r, COLORS.DIVIDER.g, COLORS.DIVIDER.b);
   pdf.setLineWidth(0.3);
   pdf.line(PAGE_MARGIN, yPos, PAGE_MARGIN + CONTENT_WIDTH, yPos);
@@ -738,14 +711,15 @@ function generateTroubleshootingSection(
       pdf.setLineWidth(0.2);
       pdf.line(
         PAGE_MARGIN,
-        yPos - 4,
+        yPos - 7,
         PAGE_MARGIN + CONTENT_WIDTH,
-        yPos - 4
+        yPos - 7
       );
     }
   }
 
   // Final divider
+  yPos += 8;
   pdf.setDrawColor(COLORS.DIVIDER.r, COLORS.DIVIDER.g, COLORS.DIVIDER.b);
   pdf.setLineWidth(0.3);
   pdf.line(PAGE_MARGIN, yPos, PAGE_MARGIN + CONTENT_WIDTH, yPos);
@@ -885,33 +859,31 @@ export async function generateHandoffPDF(
 ): Promise<void> {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const clientName = config.clientName || 'Client';
-  const preparedBy = config.preparedBy || 'Zapier Lighthouse';
+  const preparedBy = config.preparedBy || 'Z-Lighthouse';
 
-  // Page 1: Executive Summary
+  // --- PAGES ---
   generateExecutiveSummary(pdf, viewModel, config);
-  drawPageFooter(pdf, 1, clientName, preparedBy);
 
-  // Page 2: Per-Zap Breakdown (core value)
   pdf.addPage();
   generatePerZapBreakdown(pdf, viewModel, config);
-  drawPageFooter(pdf, 2, clientName, preparedBy);
 
-  // Page 3: Dependency Map
   pdf.addPage();
   generateDependencyMap(pdf, viewModel, config);
-  drawPageFooter(pdf, 3, clientName, preparedBy);
 
-  // Page 4: Troubleshooting Guide
   pdf.addPage();
   generateTroubleshootingSection(pdf, viewModel, config);
-  drawPageFooter(pdf, 4, clientName, preparedBy);
 
-  // Page 5: Handoff Checklist
   pdf.addPage();
   generateHandoffChecklist(pdf, viewModel, config);
-  drawPageFooter(pdf, 5, clientName, preparedBy);
 
-  // Save
+  // --- FOOTERS (všetky stránky naraz) ---
+  const pageCount = pdf.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    pdf.setPage(i);
+    drawPageFooter(pdf, clientName, preparedBy);
+  }
+
+  // --- SAVE ---
   const timestamp = new Date().toISOString().split('T')[0];
   pdf.save(`Handoff_Report_${config.reportCode}_${timestamp}.pdf`);
 }
