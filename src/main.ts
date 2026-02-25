@@ -115,6 +115,9 @@ let includedTasks: number = 0
 let currentPlanType: 'professional' | 'team' = 'professional'
 let currentTierIndex: number = 0
 
+// Report Type Selection State
+let selectedReportType: 'audit' | 'continuity' = 'audit'
+
 // Exact pricing tiers from Zapier
 const PRICING_TIERS = {
   professional: [
@@ -302,7 +305,7 @@ async function extractReAuditMetadata(pdfFile: File): Promise<ReAuditMetadata | 
       const metadata = await extractReAuditMetadata(file)
       
       if (!metadata) {
-        updateStatus('error', 'This PDF does not contain re-audit metadata. Please upload a Lighthouse PDF generated after Feb 2026.')
+        updateStatus('error', 'This PDF does not contain re-audit metadata. Please upload a Relay PDF generated after Feb 2026.')
         return
       }
       
@@ -319,8 +322,6 @@ async function extractReAuditMetadata(pdfFile: File): Promise<ReAuditMetadata | 
       
       // Pre-select Zaps from metadata
       selectedZapIds = new Set(metadata.zap_ids_analyzed.map(id => parseInt(id)))
-      
-      updateStatus('success', 'Re-audit mode activated! Now upload your ZIP file to continue.')  // ← TOTO PREPÍŠE BANNER!
       
     } catch (error) {
       console.error('Error processing PDF:', error)
@@ -511,11 +512,30 @@ function resetFilters() {
   renderZapTable(getFilteredZaps())
 }
 
+function setReportType(type: 'audit' | 'continuity') {
+  selectedReportType = type
+  
+  const auditBtn = document.getElementById('report-type-audit')
+  const continuityBtn = document.getElementById('report-type-continuity')
+  const hint = document.getElementById('report-type-hint')
+  
+  if (type === 'audit') {
+    auditBtn?.setAttribute('class', 'flex-1 px-4 py-3 bg-blue-600 text-white font-black rounded-lg text-sm transition-all')
+    continuityBtn?.setAttribute('class', 'flex-1 px-4 py-3 bg-white text-zinc-700 font-black rounded-lg text-sm border-2 border-zinc-200 transition-all')
+    if (hint) hint.textContent = 'Free executive summary with prioritized fixes.'
+  } else {
+    auditBtn?.setAttribute('class', 'flex-1 px-4 py-3 bg-white text-zinc-700 font-black rounded-lg text-sm border-2 border-zinc-200 transition-all')
+    continuityBtn?.setAttribute('class', 'flex-1 px-4 py-3 bg-zinc-900 text-white font-black rounded-lg text-sm transition-all')
+    if (hint) hint.textContent = 'Client-ready documentation. Requires unlock code after payment.'
+  }
+}
+
 // Make functions globally available
 ;(window as any).filterZaps = filterZaps
 ;(window as any).applyStatusFilter = applyStatusFilter
 ;(window as any).resetFilters = resetFilters
 ;(window as any).backToSelector = backToSelector
+;(window as any).setReportType = setReportType
 
 // NEW: Batch Selection Helper Functions
 function toggleZapSelection(zapId: number) {
@@ -812,7 +832,7 @@ async function handleDownloadHandoff(auditResult: AuditResult, btn: HTMLElement)
     await generateHandoffPDF(handoffViewModel, {
       reportCode,
       clientName: 'Client',
-      preparedBy: 'Realy Automation Framework',
+      preparedBy: 'Relay Automation Framework',
     })
 
     btn.innerHTML = `
@@ -866,7 +886,7 @@ function displayDeveloperEditionResults(auditResult: AuditResult) {
   resultsEl.innerHTML = `
     <div class="mt-10">
       <div class="flex items-center justify-between mb-6">
-        <h3 class="text-2xl font-bold text-zinc-900" style="letter-spacing: -0.02em;">Developer Edition Results</h3>
+        <h3 class="text-2xl font-bold text-zinc-900" style="letter-spacing: -0.02em;">Audit Results</h3>
         <div class="flex gap-3">
             <button onclick="backToSelector()" class="inline-flex items-center gap-2 px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white text-sm font-bold rounded-lg shadow-md transition-all hover:shadow-lg hover:scale-105">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -874,17 +894,17 @@ function displayDeveloperEditionResults(auditResult: AuditResult) {
               </svg>
               Back to Selection
             </button>
-            <button id="download-handoff-btn" class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white text-sm font-bold rounded-lg shadow-md transition-all hover:shadow-lg hover:scale-105">
+            <button id="download-handoff-btn" class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white text-sm font-bold rounded-lg shadow-md transition-all hover:shadow-lg hover:scale-105" style="${selectedReportType === 'continuity' ? '' : 'display:none'}">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Download Handoff Report
+              Unlock Continuity Report ($97)
             </button>
-            <button id="download-dev-pdf-btn" class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-bold rounded-lg shadow-md transition-all hover:shadow-lg hover:scale-105">
+            <button id="download-dev-pdf-btn" class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-bold rounded-lg shadow-md transition-all hover:shadow-lg hover:scale-105" style="${selectedReportType === 'audit' ? '' : 'display:none'}">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
               </svg>
-              Download Developer Edition PDF
+              Download Audit Report (Free)
             </button>
           </div>
       </div>
@@ -973,7 +993,7 @@ function displayDeveloperEditionResults(auditResult: AuditResult) {
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          💡 Click "Download Developer Edition PDF" to generate a comprehensive multi-Zap technical report with patterns, ASCII diagrams, and optimization checklist.
+          💡 Download the free Audit Report for an executive summary + prioritized fixes. To unlock the Continuity Report, click "Unlock Continuity Report ($97)".
         </p>
       </div>
     </div>
@@ -1036,7 +1056,7 @@ function displayDeveloperEditionResults(auditResult: AuditResult) {
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
               </svg>
-              Download Developer Edition PDF
+              Download Audit Report (Free)
             `
             pdfBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700')
             pdfBtn.classList.add('bg-gradient-to-r', 'from-blue-600', 'to-blue-700')
@@ -1423,6 +1443,28 @@ function displayZapSelector(zaps: ZapSummary[]) {
         <!-- Table content will be rendered by renderZapTable() -->
       </div>
       
+      <!-- Report Type Selector -->
+      <div class="mb-4 p-4 bg-white rounded-xl border border-zinc-200 shadow-sm">
+        <p class="text-sm font-black text-zinc-700 mb-3">What do you want to generate?</p>
+        <div class="flex gap-3">
+          <button 
+            id="report-type-audit"
+            onclick="setReportType('audit')"
+            class="flex-1 px-4 py-3 bg-blue-600 text-white font-black rounded-lg text-sm transition-all"
+          >
+            ✅ Audit Report (Free)
+          </button>
+          <button 
+            id="report-type-continuity"
+            onclick="setReportType('continuity')"
+            class="flex-1 px-4 py-3 bg-white text-zinc-700 font-black rounded-lg text-sm border-2 border-zinc-200 transition-all"
+          >
+            🔒 Continuity Report ($97)
+          </button>
+        </div>
+        <p id="report-type-hint" class="text-xs text-zinc-500 mt-2">Free executive summary with prioritized fixes.</p>
+      </div>
+      
       <!-- Bulk Actions & Analyze Button -->
       <div class="mt-6 flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
         <!-- Bulk Action Buttons -->
@@ -1650,7 +1692,7 @@ function renderUI() {
         <!-- PDF Re-Audit Upload -->
         <div class="text-center">
           <h3 class="text-xl font-bold text-slate-900 mb-3">Re-Audit from Previous Report</h3>
-          <p class="text-slate-600 mb-4">Upload a Lighthouse PDF to re-run the same analysis</p>
+          <p class="text-slate-600 mb-4">Upload a Relay PDF to re-run the same analysis</p>
           
           <label for="pdf-upload" class="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg cursor-pointer transition-all hover:scale-105 shadow-md">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
