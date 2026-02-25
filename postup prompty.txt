@@ -29,3 +29,6 @@ comitnuntie:
     git add package.json
     git commit -m "fix: add wasm32 target for Vercel"
     git push
+
+    https://vercel.com/
+    
