@@ -812,7 +812,7 @@ async function handleDownloadHandoff(auditResult: AuditResult, btn: HTMLElement)
     await generateHandoffPDF(handoffViewModel, {
       reportCode,
       clientName: 'Client',
-      preparedBy: 'Z-Lighthouse™ Automation Framework',
+      preparedBy: 'Realy Automation Framework',
     })
 
     btn.innerHTML = `
@@ -1609,7 +1609,7 @@ function renderUI() {
         <!-- Header -->
         <header class="text-center mb-12">
           <h1 class="text-5xl font-black text-zinc-900 mb-3" style="letter-spacing: -0.02em;">
-            Z-Lighthouse™ Automation Framework
+            Relay Automation Framework
           </h1>
           <p class="text-lg text-zinc-500 font-medium">Local Audit Engine • Privacy-First Analysis</p>
         </header>
@@ -1676,7 +1676,7 @@ function renderUI() {
         <!-- Footer -->
         <footer class="mt-16 pt-8 border-t border-zinc-200 text-center">
           <p class="text-sm text-zinc-500 font-medium">
-            Z-Lighthouse™ Automation Framework • Privacy-First Audit • Built with Rust & WASM
+            Relay Automation Risk & Continuity Reports • Privacy-First Audit • Built with Rust & WASM
           </p>
         </footer>
       </div>
