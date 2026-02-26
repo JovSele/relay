@@ -935,7 +935,7 @@ function displayDeveloperEditionResults(auditResult: AuditResult) {
           <p class="text-zinc-600 mb-8">To generate the Continuity Report, complete payment and enter your unlock code.</p>
           
           <div class="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-            <a href="YOUR_STRIPE_LINK" target="_blank" 
+            <a href="https://relayreports.lemonsqueezy.com/checkout/buy/c46c342c-0437-4fd0-a8e1-4d4d5102b256" target="_blank" 
                class="px-8 py-4 bg-zinc-900 hover:bg-zinc-800 text-white text-lg font-black rounded-xl transition-all hover:scale-[1.02]">
               Pay $97 → Get Unlock Code
             </a>

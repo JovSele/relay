@@ -27,8 +27,17 @@ Dalsi krok:
 
 comitnuntie:
     git add package.json
-    git commit -m "fix: add wasm32 target for Vercel"
+    git commit -m "google analtics"
     git push
 
     https://vercel.com/
-    
+    https://relay-pink-ten.vercel.app/
+
+
+git remote add vercel https://github.com/JovSele/relay
+git push vercel main
+
+Tým pushneš tvoj kód do repo ktoré Vercel sleduje. Odteraz budeš pushovať do oboch:
+
+git push origin main   
+git push vercel main   
