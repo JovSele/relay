@@ -1,5 +1,7 @@
+declare function gtag(...args: any[]): void
+
 import './style.css'
-import init, { 
+import init, {
   hello_world, 
   parse_zap_list, 
   //parse_single_zap_audit, 15.2.2026
@@ -396,6 +398,7 @@ async function handleFileUpload(file: File) {
     
     // Cache ZIP data for later use
     cachedZipData = uint8Array
+    gtag('event', 'zip_uploaded')
     
     // NEW WORKFLOW: Call parse_zap_list (fast, no heuristics)
     const listResultJson = parse_zap_list(uint8Array)
@@ -514,6 +517,7 @@ function resetFilters() {
 
 function setReportType(type: 'audit' | 'continuity') {
   selectedReportType = type
+  gtag('event', 'report_type_selected', { report_type: type })
   
   const auditBtn = document.getElementById('report-type-audit')
   const continuityBtn = document.getElementById('report-type-continuity')
@@ -760,6 +764,7 @@ async function handleAnalyzeSelected() {
   if (selectedZapIds.size === 0) {
     return
   }
+  gtag('event', 'analyze_clicked', { zap_count: selectedZapIds.size })
   
   if (!cachedZipData) {
     updateStatus('error', 'ZIP data not cached. Please upload again.')
@@ -830,6 +835,7 @@ async function handleDownloadHandoff(auditResult: AuditResult, btn: HTMLElement)
     Generating Handoff Report...
   `
   btn.classList.add('opacity-75', 'cursor-wait')
+  gtag('event', 'continuity_unlock_clicked')
 
   try {
     const reportId = getNextReportId()
@@ -1097,6 +1103,7 @@ function displayDeveloperEditionResults(auditResult: AuditResult) {
           Generating Developer Edition PDF...
         `
         pdfBtn.classList.add('opacity-75', 'cursor-wait')
+        gtag('event', 'audit_pdf_download_clicked')
         
         try {
           const reportId = getNextReportId()
